@@ -1,0 +1,25 @@
+.env
+env/
+venv/
+venv310/
+.venv/
+.venv310/
+
+__pycache__/
+*.py[cod]
+
+# Local dbt configs and artifacts
+.dbt/
+retail_dbt/target/
+retail_dbt/dbt_packages/
+retail_dbt/logs/
+
+# Airflow/local runtime artifacts
+logs/
+plugins/__pycache__/
+
+# Local generated logs
+retail_data/logs/
+
+# Archives
+retail_data.zip

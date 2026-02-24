@@ -1,0 +1,19 @@
+# Data Orchestration
+apache-airflow==2.8.1
+apache-airflow-providers-mysql
+apache-airflow-providers-postgres
+apache-airflow-providers-http  # Use to call MS Team API for notifications
+
+# Data Transformation & Processing
+dbt-core==1.7.0
+dbt-postgres==1.7.0
+pandas==2.1.4
+numpy==1.24.4
+
+# Database Connectors
+SQLAlchemy==1.4.51
+PyMySQL==1.1.0
+psycopg2-binary==2.9.9
+
+# Data Generation (Mock Data for Testing)
+Faker==22.5.1
