@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: my_first_dbt_model
+    description: "A starter dbt model"
+    columns:
+      - name: id
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null
+
+  - name: my_second_dbt_model
+    description: "A starter dbt model"
+    columns:
+      - name: id
+        description: "The primary key for this table"
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_orders
+    description: "Silver staging model built from raw.sales_transactions"
+    columns:
+      - name: order_id
+        description: "Transaction identifier mapped from transaction_id"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: order_date
+        description: "Transaction timestamp"
+        tests:
+          - not_null
+      - name: total_amount
+        description: "Total transaction amount"
+        tests:
+          - not_null

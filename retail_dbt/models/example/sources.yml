@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: retail_raw
+    schema: raw # this is schema in Postgres that contains the raw data
+    tables:
+      - name: products
+      - name: customers
+      - name: sales_transactions
