@@ -2,8 +2,10 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.mysql.hooks.mysql import MySqlHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models import Variable
 from datetime import datetime, timedelta
 import pandas as pd
+import requests
 
 TABLES = [
     "brands",
@@ -74,6 +76,49 @@ def etl_table_to_raw(table_name, **kwargs):
     print(f"ETL for {table_name} completed. Rows: {len(df)}. Run_ID: {run_id}")
 
 
+def send_teams_report(**context):
+    pg_hook = PostgresHook(postgres_conn_id="postgres_dw_conn")
+
+    invalid_count = pg_hook.get_first(
+        "SELECT COUNT(*) FROM silver.silver_sales_invalid"
+    )[0]
+
+    orders, revenue = pg_hook.get_first(
+        """
+        SELECT
+            COUNT(DISTINCT transaction_id) AS total_orders,
+            COALESCE(SUM(line_total), 0) AS total_revenue
+        FROM gold.fact_sales
+        """
+    )
+
+    status = (
+        "✅ DQ PASS" if invalid_count == 0 else f"⚠️ DQ FAIL ({invalid_count} errors)"
+    )
+    color = "00FF00" if invalid_count == 0 else "FF0000"
+
+    message = {
+        "@type": "MessageCard",
+        "themeColor": color,
+        "title": f"Báo cáo Pipeline: {status}",
+        "text": (
+            f"**Run ID:** {context['run_id']}<br>"
+            f"**Total Orders:** {orders}<br>"
+            f"**Total Revenue:** {revenue:,.0f} VNĐ<br>"
+            f"**Invalid Count:** {invalid_count}"
+        ),
+    }
+
+    webhook_url = Variable.get("teams_webhook_url", default_var=None)
+    if not webhook_url:
+        raise ValueError("Missing Airflow Variable 'teams_webhook_url'")
+
+    response = requests.post(webhook_url, json=message, timeout=15)
+    response.raise_for_status()
+
+    print("Teams alert sent successfully")
+
+
 with DAG(
     dag_id="mysql_to_postgres_raw",
     default_args=default_args,
@@ -90,6 +135,13 @@ with DAG(
         task_id="create_raw_schema", python_callable=create_schema
     )
 
+    teams_alert_task = PythonOperator(
+        task_id="send_teams_alert",
+        python_callable=send_teams_report,
+    )
+
+    load_tasks = []
+
     for table in TABLES:
         task_load = PythonOperator(
             task_id=f"load_{table}_to_raw",
@@ -97,3 +149,7 @@ with DAG(
             op_kwargs={"table_name": table},
         )
         task_create_schema >> task_load
+        load_tasks.append(task_load)
+
+    for task_load in load_tasks:
+        task_load >> teams_alert_task
