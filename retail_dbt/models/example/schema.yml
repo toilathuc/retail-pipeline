@@ -4,8 +4,8 @@ models:
   - name: stg_orders
     description: "Silver staging model built from raw.sales_transactions"
     columns:
-      - name: order_id
-        description: "Transaction identifier mapped from transaction_id"
+      - name: transaction_id
+        description: "Transaction identifier"
         tests:
           - not_null
           - unique
@@ -13,7 +13,7 @@ models:
         description: "Customer identifier"
         tests:
           - not_null
-      - name: order_date
+      - name: transaction_date
         description: "Transaction date/time"
         tests:
           - not_null

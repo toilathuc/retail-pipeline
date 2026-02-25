@@ -6,5 +6,6 @@ sources:
     tables:
       - name: products
       - name: customers
+      - name: stores
       - name: sales_transactions
       - name: sales_items

@@ -5,10 +5,12 @@ WITH raw_data AS (
 )
 
 SELECT 
-    transaction_id AS order_id,
-    customer_id,
-    CAST(transaction_date AS TIMESTAMP) AS order_date,
+    CAST(transaction_id AS INT) AS transaction_id,
+    CAST(customer_id AS INT) AS customer_id,
+    CAST(store_id AS INT) AS store_id,
+    CAST(employee_id AS INT) AS employee_id,
+    CAST(transaction_date AS TIMESTAMP) AS transaction_date,
     CAST(total_amount AS NUMERIC(10,2)) AS total_amount,
-    payment_id
+    CAST(payment_id AS INT) AS payment_id
 FROM raw_data
 WHERE transaction_id IS NOT NULL
