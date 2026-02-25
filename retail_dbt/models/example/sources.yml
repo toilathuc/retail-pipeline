@@ -7,3 +7,4 @@ sources:
       - name: products
       - name: customers
       - name: sales_transactions
+      - name: sales_items

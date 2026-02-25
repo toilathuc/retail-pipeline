@@ -1,24 +1,6 @@
 version: 2
 
 models:
-  - name: my_first_dbt_model
-    description: "A starter dbt model"
-    columns:
-      - name: id
-        description: "The primary key for this table"
-        tests:
-          - unique
-          - not_null
-
-  - name: my_second_dbt_model
-    description: "A starter dbt model"
-    columns:
-      - name: id
-        description: "The primary key for this table"
-        tests:
-          - unique
-          - not_null
-
   - name: stg_orders
     description: "Silver staging model built from raw.sales_transactions"
     columns:
@@ -32,10 +14,60 @@ models:
         tests:
           - not_null
       - name: order_date
-        description: "Transaction timestamp"
+        description: "Transaction date/time"
         tests:
           - not_null
       - name: total_amount
         description: "Total transaction amount"
+        tests:
+          - not_null
+
+  - name: silver_sales_valid
+    description: "Clean sales orders that pass business rules (quantity > 0 and transaction_date <= today)"
+    columns:
+      - name: transaction_id
+        description: "Source transaction id"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: transaction_date
+        description: "Date of the transaction"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Purchased quantity"
+        tests:
+          - not_null
+      - name: total_amount
+        description: "Order amount"
+        tests:
+          - not_null
+
+  - name: silver_sales_invalid
+    description: "Sales orders failing business rules (quantity <= 0 or future transaction_date)"
+    columns:
+      - name: transaction_id
+        description: "Source transaction id"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: transaction_date
+        description: "Date of the transaction"
+        tests:
+          - not_null
+      - name: quantity
+        description: "Purchased quantity"
+        tests:
+          - not_null
+      - name: total_amount
+        description: "Order amount"
         tests:
           - not_null
