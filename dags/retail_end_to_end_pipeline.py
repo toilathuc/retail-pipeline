@@ -115,7 +115,9 @@ def etl_table_to_raw(table_name, **kwargs):
 
 def run_dbt(select_models):
     dbt_python_bin = Variable.get("dbt_python_bin", default_var="python")
-    dbt_project_dir = Variable.get("dbt_project_dir", default_var="/opt/airflow/retail_dbt")
+    dbt_project_dir = Variable.get(
+        "dbt_project_dir", default_var="/opt/airflow/retail_dbt"
+    )
     dbt_profiles_dir = Variable.get(
         "dbt_profiles_dir", default_var="/opt/airflow/retail_dbt/profiles"
     )

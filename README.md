@@ -1,83 +1,131 @@
 # End-to-End Retail Data Pipeline
 
-This repository contains a local end-to-end data pipeline for retail analytics using MySQL, PostgreSQL, Airflow, and dbt.
+This project implements an end-to-end retail analytics pipeline with MySQL (source), PostgreSQL (warehouse), Airflow (orchestration), dbt (transformations), and Power BI (visualization).
 
-## Project Goal
+## Scope
 
-- Ingest 23 retail source tables from MySQL
+- Ingest 23 source retail tables from MySQL
 - Build Raw, Silver, and Gold layers in PostgreSQL
-- Apply data quality checks and SCD logic
-- Prepare analytics-ready models for dashboarding and demo
+- Apply data quality logic (valid/invalid split)
+- Build Kimball-style Gold models for BI (`fact_sales`, `dim_*`)
+- Send Microsoft Teams notifications for pipeline outcomes
 
 ## Architecture
 
-- Source database: MySQL in Docker
+- Source: MySQL in Docker (`retail_db`)
 - Warehouse: PostgreSQL in Docker (local simulation of AWS RDS PostgreSQL)
-- Orchestration: Apache Airflow
-- Transformations and testing: dbt
-- Visualization: Power BI, Superset, or Metabase
+- Orchestration: Apache Airflow in Docker
+- Transformation: dbt (executed inside Airflow and optionally local CLI)
+- Visualization: Power BI
+
+## Main DAGs
+
+- `retail_end_to_end_pipeline` (recommended)
+  - Raw ingest -> Silver dbt -> Gold dbt -> DQ evaluation -> Teams notification
+- `mysql_to_postgres_raw`
+  - Raw ingest only (legacy/fallback)
 
 ## Repository Structure
 
-- docs: requirements, mapping, SCD, DQ, and demo runbook
-- scripts: DDL and source data loading SQL scripts
-- dags: Airflow DAGs for ingestion and orchestration
-- retail_dbt: dbt project for Silver and Gold transformations
-- retail_data: source CSV files
+- `dags/`: Airflow DAGs
+- `scripts/`: MySQL DDL and CSV loading scripts
+- `retail_dbt/`: dbt project
+- `retail_data/`: input CSV files
+- `docs/`: requirements, mapping, SCD, DQ, runbook, submission guide
 
 ## Prerequisites
 
 - Docker Desktop
-- Python 3.10 virtual environment (optional for local dbt CLI)
-- DBeaver or psql (optional for validation)
+- Python 3.10 (recommended for local CLI consistency)
+- (Optional but recommended) Python 3.10 virtual environment for local dbt CLI
+- DBeaver/psql for SQL validation
 
-## Local Setup
+## Python 3.10 Virtual Environment (Recommended)
 
-1. Start infrastructure
+Use this when you run dbt locally outside Airflow.
 
-- Command: docker compose up -d
+1. Create virtual environment (Windows)
 
-2. Service endpoints
+- `py -3.10 -m venv .venv310`
 
-- Airflow UI: http://localhost:8080
-- MySQL source (host): localhost:13306
-- PostgreSQL warehouse (host): localhost:5432
+2. Activate virtual environment
 
-3. Load source data to MySQL
+- PowerShell: `\.venv310\Scripts\Activate.ps1`
+- Git Bash: `source .venv310/Scripts/activate`
 
-- Command (Windows):
-  cmd /c "mysql --local-infile=1 -h 127.0.0.1 -P 13306 -u root -proot_pass retail_db < scripts\02_load_data.sql"
+3. Upgrade pip and install dependencies
 
-4. Run Raw ingestion DAG
+- `python -m pip install --upgrade pip`
+- `pip install -r requirements.txt`
 
-- DAG name: mysql_to_postgres_raw
-- Expected output: raw schema tables populated in PostgreSQL
+4. Optional quick check
 
-5. Run dbt model and tests
+- `python -m dbt.cli.main --version`
 
-- Command:
-  E:\FSOFT\.venv310\Scripts\python.exe -m dbt.cli.main run --project-dir E:\FSOFT\retail_dbt --profiles-dir C:\Users\ADMIN\.dbt --select stg_orders
-- Command:
-  E:\FSOFT\.venv310\Scripts\python.exe -m dbt.cli.main test --project-dir E:\FSOFT\retail_dbt --profiles-dir C:\Users\ADMIN\.dbt --select stg_orders
+## Quick Start
 
-## Key Notes
+1. Start services
 
-- Raw layer stores source business fields as text for traceability.
-- In Docker network, Airflow connections should use service names:
-  - MySQL host: retail_mysql_source
-  - PostgreSQL host: retail_postgres_dw
-- Host ports are used only by local tools (DBeaver, local CLI):
-  - MySQL 13306, PostgreSQL 5432
+- `docker compose up -d --build`
+
+2. Load source data to MySQL
+
+- Windows:
+  - `cmd /c "mysql --local-infile=1 -h 127.0.0.1 -P 13306 -u root -proot_pass retail_db < scripts\02_load_data.sql"`
+
+3. Open Airflow
+
+- URL: `http://localhost:8080`
+
+4. Configure Airflow
+
+- Connections:
+  - `mysql_source_conn`
+  - `postgres_dw_conn`
+- Variables:
+  - `teams_webhook_url`
+  - `dq_fail_threshold` (default recommendation: `0.05`)
+
+5. Trigger pipeline
+
+- DAG: `retail_end_to_end_pipeline`
+
+6. Validate KPI in PostgreSQL
+
+- `SELECT COUNT(DISTINCT transaction_id) AS total_orders, ROUND(SUM(line_total),2) AS total_revenue, ROUND(SUM(line_total)/NULLIF(COUNT(DISTINCT transaction_id),0),2) AS aov FROM silver_gold.fact_sales;`
+
+7. Refresh Power BI
+
+- Confirm dashboard KPIs match SQL results.
+
+## Local dbt CLI (Optional)
+
+If you want to run dbt manually from local machine (instead of only Airflow):
+
+- `Set-Location retail_dbt`
+- `E:\FSOFT\.venv310\Scripts\python.exe -m dbt.cli.main run --select stg_orders silver_sales_valid silver_sales_invalid dim_customer dim_date dim_product dim_store fact_sales`
+- `E:\FSOFT\.venv310\Scripts\python.exe -m dbt.cli.main test`
+
+## Important Notes
+
+- Raw business fields are preserved as text for traceability.
+- Current setup is local PostgreSQL as AWS RDS-compatible simulation.
+- `retail_end_to_end_pipeline` sends:
+  - `SUCCESS` when invalid ratio <= threshold
+  - `DQ_FAILED` when invalid ratio > threshold
+  - `FAILED` on runtime errors
 
 ## Common Troubleshooting
 
-- dbt profile issue:
-  ensure dbt uses the correct profile directory with --profiles-dir
-- DBeaver PostgreSQL connection fails with timezone error:
-  remove invalid timezone options such as Asia/Saigon from driver/connection properties
-- Airflow task shows success but Rows: 0:
-  source MySQL table is empty or source data load step has not run yet
+- Airflow cannot send Teams message:
+  - Check `teams_webhook_url` Airflow Variable.
+- dbt path/profile issue in DAG:
+  - Check Variables `dbt_project_dir` and `dbt_profiles_dir`.
+- Data volume unexpectedly increases:
+  - Ensure latest DAG code is used (raw load mode uses snapshot `replace`, not `append`).
+- DBeaver timezone connection error:
+  - Remove invalid timezone properties from driver settings.
 
 ## Documentation
 
-- See [docs/00_docs_index.md](docs/00_docs_index.md) for the complete documentation map.
+- Full docs index: [docs/00_docs_index.md](docs/00_docs_index.md)
