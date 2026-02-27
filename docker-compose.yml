@@ -5,11 +5,12 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_dw:5432/${POSTGRES_DB}
-    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-mysql apache-airflow-providers-postgres apache-airflow-providers-http"
+    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-mysql apache-airflow-providers-postgres apache-airflow-providers-http dbt-core==1.7.0 dbt-postgres==1.7.0"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./retail_dbt:/opt/airflow/retail_dbt
   depends_on:
     postgres_dw:
       condition: service_healthy

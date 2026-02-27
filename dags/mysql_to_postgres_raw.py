@@ -67,7 +67,7 @@ def etl_table_to_raw(table_name, **kwargs):
         name=table_name,
         con=engine,
         schema="raw",
-        if_exists="append",
+        if_exists="replace",
         index=False,
         method="multi",
         chunksize=1000,
